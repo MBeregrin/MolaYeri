@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8fefb8aacda721d4085cf35cedfa8184, type: 3}
+  m_Name: Cips
+  m_EditorClassIdentifier: Assembly-CSharp::ProductData
+  productID: 1
+  productName: Cips
+  singleItemPrefab: {fileID: 6060780381334419887, guid: 07a7b665ab80eff4ab8b119e3561e9de, type: 3}
+  boxPrefab: {fileID: 2233802056324676752, guid: 24e53a0412cb3624db744d5f385e706d, type: 3}
+  itemWidth: 0.1
+  itemDepth: 0.1
+  buyPrice: 0
+  defaultSellPrice: 0
