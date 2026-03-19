@@ -1,81 +1,158 @@
 using UnityEngine;
 using Unity.Netcode;
 using System;
+using System.Collections.Generic;
 
-public class EconomyManager : NetworkBehaviour
+namespace WeBussedUp.Core.Managers
 {
-    // Her scriptin bu kasaya kolayca ulaşması için Singleton (Tekil) yapıyoruz.
-    public static EconomyManager Instance;
-
-    [Header("Şirket Kasası")]
-    // NetworkVariable: Para değiştiği an Server'dan tüm oyunculara otomatik ve anında iletilir.
-    // Başlangıç parası olarak 1000$ verdik.
-    public NetworkVariable<float> companyMoney = new NetworkVariable<float>(1000f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-
-    // Ekranda (UI) parayı yazdıracağımız zaman bu Event'i tetikleyeceğiz.
-    public event Action<float> OnMoneyChanged;
-
-    private void Awake()
+    /// <summary>
+    /// Şirket kasasını yönetir. Server yetkili — para sadece server'da değişir.
+    /// Tüm işlemler TransactionRecord ile loglanır (UI ve debug için).
+    /// </summary>
+    public class EconomyManager : NetworkBehaviour
     {
-        // Singleton Kurulumu
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
-    }
+        // ─── Singleton ───────────────────────────────────────────
+        public static EconomyManager Instance { get; private set; }
 
-    public override void OnNetworkSpawn()
-    {
-        // Para her değiştiğinde bu fonksiyon otomatik çalışır (Hem Server'da hem Client'larda)
-        companyMoney.OnValueChanged += (oldValue, newValue) =>
+        // ─── Inspector ───────────────────────────────────────────
+        [Header("Başlangıç Ayarları")]
+        [SerializeField] private float _startingMoney = 1000f;
+
+        [Header("Debug")]
+        [SerializeField] private bool _logTransactions = true;
+
+        // ─── Network State ───────────────────────────────────────
+        public NetworkVariable<float> CompanyMoney = new NetworkVariable<float>(
+            0f,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server
+        );
+
+        // ─── Events ──────────────────────────────────────────────
+        /// <summary>Para değiştiğinde — UI binding için</summary>
+        public event Action<float> OnMoneyChanged;
+
+        /// <summary>Harcama başarısız olduğunda — UI uyarısı için</summary>
+        public event Action<float> OnInsufficientFunds;
+
+        /// <summary>Yeni transaction kaydedildiğinde — finans paneli için</summary>
+        public event Action<TransactionRecord> OnTransactionRecorded;
+
+        // ─── Transaction History ─────────────────────────────────
+        private readonly List<TransactionRecord> _transactionHistory = new();
+        public IReadOnlyList<TransactionRecord> TransactionHistory => _transactionHistory;
+
+        // ─── Unity ───────────────────────────────────────────────
+        private void Awake()
         {
-            // Ekranda UI varsa, parayı güncellemesi için ona haber ver.
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+
+        // ─── NetworkBehaviour ────────────────────────────────────
+        public override void OnNetworkSpawn()
+        {
+            CompanyMoney.OnValueChanged += HandleMoneyChanged;
+
+            if (IsServer)
+                CompanyMoney.Value = _startingMoney;
+        }
+
+        public override void OnNetworkDespawn()
+        {
+            CompanyMoney.OnValueChanged -= HandleMoneyChanged;
+        }
+
+        // ─── Public API ──────────────────────────────────────────
+        public bool HasEnoughMoney(float amount) => CompanyMoney.Value >= amount;
+
+        // ─── Server RPC ──────────────────────────────────────────
+        /// <summary>Kasaya para ekle — satış, bonus vb.</summary>
+        [Rpc(SendTo.Server)]
+        public void AddMoneyServerRpc(float amount, TransactionCategory category = TransactionCategory.Sale)
+        {
+            if (amount <= 0) return;
+
+            CompanyMoney.Value += amount;
+            RecordTransaction(amount, category, isIncome: true);
+        }
+
+        /// <summary>Kasadan para harca — alım, inşaat vb.</summary>
+        [Rpc(SendTo.Server)]
+        public void SpendMoneyServerRpc(float amount, TransactionCategory category = TransactionCategory.Purchase)
+        {
+            if (amount <= 0) return;
+
+            if (CompanyMoney.Value < amount)
+            {
+                NotifyInsufficientFundsClientRpc(amount);
+                return;
+            }
+
+            CompanyMoney.Value -= amount;
+            RecordTransaction(amount, category, isIncome: false);
+        }
+
+        // ─── Client RPC ──────────────────────────────────────────
+        [Rpc(SendTo.ClientsAndHost)]
+        private void NotifyInsufficientFundsClientRpc(float attemptedAmount)
+        {
+            OnInsufficientFunds?.Invoke(attemptedAmount);
+            Debug.LogWarning($"[EconomyManager] Yetersiz bakiye! Gereken: {attemptedAmount:F2}₺, Mevcut: {CompanyMoney.Value:F2}₺");
+        }
+
+        // ─── Private ─────────────────────────────────────────────
+        private void HandleMoneyChanged(float oldValue, float newValue)
+        {
             OnMoneyChanged?.Invoke(newValue);
-            Debug.Log($"[KASA] Yeni Bakiye: {newValue}$");
-        };
-    }
 
-    // ==========================================
-    // PARA EKLEME VE HARCAMA İŞLEMLERİ
-    // (Sadece Server parayı değiştirebilir, hileyi önlemek için)
-    // ==========================================
-
-    /// <summary>
-    /// Kasaya para ekler (Satış yapıldığında vb. çağrılır)
-    /// Örnek Kullanım: EconomyManager.Instance.AddMoneyServerRpc(50f);
-    /// </summary>
-    [Rpc(SendTo.Server)]
-    public void AddMoneyServerRpc(float amount)
-    {
-        if (amount <= 0) return;
-        companyMoney.Value += amount;
-    }
-
-    /// <summary>
-    /// Kasadan para harcar (Toptancıdan mal alınca, raf kurunca vb. çağrılır)
-    /// Örnek Kullanım: EconomyManager.Instance.SpendMoneyServerRpc(150f);
-    /// </summary>
-    [Rpc(SendTo.Server)]
-    public void SpendMoneyServerRpc(float amount)
-    {
-        if (amount <= 0) return;
-        
-        // Kasada yeterli para var mı kontrolü
-        if (companyMoney.Value >= amount)
-        {
-            companyMoney.Value -= amount;
+            if (_logTransactions)
+                Debug.Log($"[EconomyManager] Bakiye: {oldValue:F2}₺ → {newValue:F2}₺");
         }
-        else
+
+        private void RecordTransaction(float amount, TransactionCategory category, bool isIncome)
         {
-            Debug.LogWarning("[KASA] Yetersiz Bakiye! Bu işlem yapılamaz.");
-            // İstersen burada ekrana "YETERSİZ BAKİYE" uyarısı çıkartacak bir ClientRpc tetikleyebilirsin.
+            var record = new TransactionRecord(amount, category, isIncome);
+            _transactionHistory.Add(record);
+            OnTransactionRecorded?.Invoke(record);
         }
     }
 
-    /// <summary>
-    /// Herhangi bir scriptin "Kasada bu kadar paramız var mı?" diye sorması için.
-    /// (Satın alma butonunu gri/aktif yapmak için kullanılır).
-    /// </summary>
-    public bool HasEnoughMoney(float amount)
+    // ─── Veri Yapıları ───────────────────────────────────────────
+    public enum TransactionCategory
     {
-        return companyMoney.Value >= amount;
+        Sale,        // Müşteriye satış
+        Purchase,    // Toptancıdan alım
+        Construction,// İnşaat/eşya yerleştirme
+        Wage,        // Personel maaşı
+        Utility,     // Fatura (elektrik, su)
+        Fuel,        // Benzin alımı
+        Bonus,       // Bonus/ödül
+        Other
+    }
+
+    [Serializable]
+    public struct TransactionRecord
+    {
+        public float               Amount;
+        public TransactionCategory Category;
+        public bool                IsIncome;
+        public DateTime            Timestamp;
+
+        public TransactionRecord(float amount, TransactionCategory category, bool isIncome)
+        {
+            Amount    = amount;
+            Category  = category;
+            IsIncome  = isIncome;
+            Timestamp = DateTime.Now;
+        }
+
+        public override string ToString() =>
+            $"[{Timestamp:HH:mm:ss}] {(IsIncome ? "+" : "-")}{Amount:F2}₺ ({Category})";
     }
 }

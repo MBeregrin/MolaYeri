@@ -1,94 +1,141 @@
 using UnityEngine;
 using Unity.Netcode;
+using WeBussedUp.Core.Data;
+using WeBussedUp.Player;
+using WeBussedUp.Interfaces;
 
-[RequireComponent(typeof(Rigidbody), typeof(NetworkObject))]
-public class PickableItem : NetworkBehaviour, IInteractable
+namespace WeBussedUp.Gameplay.Items
 {
-    [Header("Eşya Bilgileri")]
-    public string itemName = "Karton Koli";
-
-    // İŞTE HATAYI ÇÖZECEK OLAN YENİ DEĞİŞKEN (Mıknatıs Sistemi İçin)
-    // Bu eşyayı kim taşıyor? (ulong.MaxValue = Kimse taşımıyor, yerde duruyor)
-    public NetworkVariable<ulong> carrierID = new NetworkVariable<ulong>(ulong.MaxValue, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-
-    private Rigidbody rb;
-    private Collider col;
-
-    private void Awake()
+    /// <summary>
+    /// Yerden alınabilen, taşınabilen ve bırakılabilen her eşyanın temel bileşeni.
+    /// Taşıma pozisyonlaması PlayerCarrySystem'e aittir — bu script sadece
+    /// network state ve fizik yönetir.
+    /// </summary>
+    [RequireComponent(typeof(Rigidbody), typeof(NetworkObject))]
+    public class PickableItem : NetworkBehaviour, IInteractable, ICarriable
     {
-        rb = GetComponent<Rigidbody>();
-        col = GetComponent<Collider>();
-    }
+        // ─── Inspector ───────────────────────────────────────────
+        [Header("Eşya Verisi")]
+        [SerializeField] private ItemData _itemData;
 
-    public override void OnNetworkSpawn()
-    {
-        // Eşya ilk doğduğunda veya biri server'a katıldığında durumu senkronize et
-        carrierID.OnValueChanged += OnCarrierChanged;
-        UpdatePhysicalState(carrierID.Value);
-    }
+        [Tooltip("ItemData atanmadıysa fallback isim")]
+        [SerializeField] private string _fallbackName = "Eşya";
 
-    // --- IINTERACTABLE ARAYÜZÜ (Ekrana bakınca çalışacak kısım) ---
-    public string GetInteractionPrompt()
-    {
-        return carrierID.Value == ulong.MaxValue ? $"{itemName} Al [E]" : "";
-    }
+        // ─── Network State ───────────────────────────────────────
+        /// <summary>ulong.MaxValue = kimse taşımıyor</summary>
+        public NetworkVariable<ulong> CarrierID = new NetworkVariable<ulong>(
+            ulong.MaxValue,
+            NetworkVariableReadPermission.Everyone,
+            NetworkVariableWritePermission.Server
+        );
 
-    public void Interact(ulong playerID)
-    {
-        // Sadece yerdeyse alınabilsin
-        if (carrierID.Value == ulong.MaxValue)
+        // ─── Runtime ─────────────────────────────────────────────
+        private Rigidbody _rb;
+        private Collider  _col;
+
+        // ─── Public API ──────────────────────────────────────────
+        public bool     IsCarried  => CarrierID.Value != ulong.MaxValue;
+        public ItemData ItemData   => _itemData;
+        public string   DisplayName => _itemData != null ? _itemData.itemName : _fallbackName;
+
+        public bool CanInteract(ulong playerId) => !IsCarried;
+        public InteractionType GetInteractionType() => InteractionType.PickUp;
+
+        // ─── Unity ───────────────────────────────────────────────
+        private void Awake()
         {
-            PickUpServerRpc(playerID);
+            _rb  = GetComponent<Rigidbody>();
+            _col = GetComponent<Collider>();
         }
-    }
 
-    // ==========================================
-    // MULTIPLAYER KONTROLLERİ (SERVER RPC)
-    // ==========================================
-
-    [Rpc(SendTo.Server)]
-    private void PickUpServerRpc(ulong playerID)
-    {
-        // Biri benden önce kapmadıysa, ID'yi benim ID'm yap
-        if (carrierID.Value == ulong.MaxValue)
+        // ─── NetworkBehaviour ────────────────────────────────────
+        public override void OnNetworkSpawn()
         {
-            carrierID.Value = playerID;
-            // Objenin ağ mülkiyetini de o oyuncuya ver ki rahat hareket ettirsin
-            GetComponent<NetworkObject>().ChangeOwnership(playerID);
+            CarrierID.OnValueChanged += OnCarrierChanged;
+            ApplyPhysicsState(CarrierID.Value);
         }
-    }
 
-    // İŞTE DİĞER HATAYI ÇÖZECEK FONKSİYON
-    [Rpc(SendTo.Server)]
-    public void DropServerRpc()
-    {
-        // Yere bırak
-        carrierID.Value = ulong.MaxValue;
-        GetComponent<NetworkObject>().RemoveOwnership();
-    }
-
-    // ==========================================
-    // MIKNATIS (FİZİK) DURUMU
-    // ==========================================
-
-    private void OnCarrierChanged(ulong oldID, ulong newID)
-    {
-        UpdatePhysicalState(newID);
-    }
-
-    private void UpdatePhysicalState(ulong currentCarrierID)
-    {
-        if (currentCarrierID == ulong.MaxValue)
+        public override void OnNetworkDespawn()
         {
-            // YERDE DURUYOR (Fizik Açık)
-            rb.isKinematic = false;
-            col.enabled = true;
+            CarrierID.OnValueChanged -= OnCarrierChanged;
         }
-        else
+
+        // ─── IInteractable ───────────────────────────────────────
+        public string GetInteractionPrompt()
         {
-            // BİRİ TAŞIYOR (Fizik Kapalı, Lazer (Raycast) buna çarpmasın diye collider kapalı)
-            rb.isKinematic = true;
-            col.enabled = false;
+            if (IsCarried) return string.Empty;
+            return $"{DisplayName} Al [E]";
+        }
+
+        public void Interact(ulong playerId)
+        {
+            if (!IsCarried) RequestPickUpServerRpc(playerId);
+        }
+
+        // ─── Network RPC ─────────────────────────────────────────
+        [Rpc(SendTo.Server)]
+        private void RequestPickUpServerRpc(ulong playerId)
+        {
+            // Race condition: biri daha önce kapmış olabilir
+            if (IsCarried) return;
+
+            NetworkObject playerNetObj = NetworkManager.Singleton
+                .SpawnManager.GetPlayerNetworkObject(playerId);
+
+            if (playerNetObj == null) return;
+
+            CarrierID.Value = playerId;
+            NetworkObject.ChangeOwnership(playerId);
+
+            // Parent ata — pozisyonlamayı PlayerCarrySystem üstlenir
+            NetworkObject.TrySetParent(playerNetObj, worldPositionStays: false);
+
+            NotifyCarrySystemClientRpc(playerId);
+        }
+
+        [Rpc(SendTo.Server)]
+        public void RequestDropServerRpc(Vector3 dropPosition)
+        {
+            if (!IsCarried) return;
+
+            CarrierID.Value = ulong.MaxValue;
+            NetworkObject.TrySetParent((NetworkObject)null, worldPositionStays: true);
+            NetworkObject.RemoveOwnership();
+
+            DropClientRpc(dropPosition);
+        }
+
+        [Rpc(SendTo.ClientsAndHost)]
+        private void NotifyCarrySystemClientRpc(ulong playerId)
+        {
+            // Sadece taşıyan oyuncunun CarrySystem'i kendini set eder
+            if (NetworkManager.Singleton.LocalClientId != playerId) return;
+
+            PlayerCarrySystem carrySystem = NetworkManager.Singleton
+                .SpawnManager.GetPlayerNetworkObject(playerId)
+                ?.GetComponent<PlayerCarrySystem>();
+
+            carrySystem?.SetCarriedItem(this);
+        }
+
+        [Rpc(SendTo.ClientsAndHost)]
+        private void DropClientRpc(Vector3 dropPosition)
+        {
+            transform.position = dropPosition;
+        }
+
+        // ─── Fizik ───────────────────────────────────────────────
+        private void OnCarrierChanged(ulong oldId, ulong newId)
+        {
+            ApplyPhysicsState(newId);
+        }
+
+        private void ApplyPhysicsState(ulong currentCarrierId)
+        {
+            bool carried = currentCarrierId != ulong.MaxValue;
+
+            _rb.isKinematic = carried;
+            _col.enabled    = !carried;
         }
     }
 }

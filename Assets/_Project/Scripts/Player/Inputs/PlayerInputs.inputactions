@@ -97,6 +97,15 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "ToggleCleanMode",
+                    "type": "Button",
+                    "id": "d2796e20-e67d-4b14-8cd3-b75690f32b04",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "ToggleBuild",
                     "type": "Button",
                     "id": "78788676-c588-4689-8d7a-c8ab9d0e21fd",
@@ -109,6 +118,24 @@
                     "name": "PlaceObject",
                     "type": "Button",
                     "id": "3d2e7526-48e5-4aad-845e-3fb37edf4491",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Throw",
+                    "type": "Button",
+                    "id": "e1c6c3a1-f9ef-4faa-9569-496f33512ddf",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Drop",
+                    "type": "Button",
+                    "id": "fb04df7a-1197-46f2-af27-8cfca050d1db",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -262,11 +289,22 @@
                 {
                     "name": "",
                     "id": "7ca0b58c-b4a5-4090-8263-96e713729e7e",
-                    "path": "<Keyboard>/t",
+                    "path": "<Keyboard>/escape",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Menu",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "0ade9553-4aa8-4e9e-9c34-03351310c233",
+                    "path": "<Keyboard>/t",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ToggleCleanMode",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -289,6 +327,28 @@
                     "processors": "",
                     "groups": "",
                     "action": "PlaceObject",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "d8a47da1-4651-4192-8f72-1d4d0c145d2f",
+                    "path": "<Keyboard>/f",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Throw",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "fa70dccd-9884-4f21-a88d-9caf2131fdd6",
+                    "path": "<Keyboard>/g",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Drop",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
