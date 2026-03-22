@@ -51,7 +51,7 @@ namespace WeBussedUp.Stations.CarWash
         // ─── Runtime ─────────────────────────────────────────────
         private float _lifetimeTimer  = 0f;
         private float _checkTimer     = 0f;
-        private bool  _isBeingCleaned = false;
+        
 
         // ─── NetworkBehaviour ────────────────────────────────────
         public override void OnNetworkSpawn()

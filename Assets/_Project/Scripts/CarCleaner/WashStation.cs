@@ -6,7 +6,7 @@ using WeBussedUp.Interfaces;
 using WeBussedUp.Core.Managers;
 using WeBussedUp.NPC;
 using WeBussedUp.UI;
-
+using WeBussedUp.Gameplay;
 namespace WeBussedUp.Stations.CarWash
 {
     public enum WashType { Basic, Foam, Full }
@@ -56,6 +56,20 @@ namespace WeBussedUp.Stations.CarWash
         public UnityEvent<float>  OnWashCompleted;  // float = kalite skoru (0-1)
         public UnityEvent         OnVehicleEntered;
         public UnityEvent         OnVehicleExited;
+
+        private NPCQueueSystem _queue;
+
+private void Start()
+{
+    _queue = GetComponent<NPCQueueSystem>();
+}
+
+// CustomerAI gelince
+public void OnCustomerArrived(CustomerAI customer)
+{
+    if (_queue != null && !_queue.IsFull)
+        _queue.TryEnqueue(customer);
+}
 
         // ─── Network State ───────────────────────────────────────
         public NetworkVariable<bool> IsOccupied = new NetworkVariable<bool>(
@@ -257,7 +271,7 @@ namespace WeBussedUp.Stations.CarWash
         private void NotifyCustomerAI(ulong customerId, float quality)
         {
             // Sahnedeki CustomerAI'ları tara, ilgili müşteriyi bul
-            foreach (var ai in FindObjectsByType<CustomerAI>(FindObjectsSortMode.None))
+            foreach (var ai in FindObjectsByType<CustomerAI>(FindObjectsInactive.Exclude))
             {
                 var netObj = ai.GetComponent<NetworkObject>();
                 if (netObj != null && netObj.OwnerClientId == customerId)

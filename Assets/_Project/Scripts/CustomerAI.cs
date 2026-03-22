@@ -24,6 +24,8 @@ namespace WeBussedUp.NPC
     [RequireComponent(typeof(NavMeshAgent))]
     public class CustomerAI : NetworkBehaviour
     {
+        // CustomerAI.cs içinde private ModifySatisfaction'ın yanına ekle
+public void ModifySatisfactionPublic(float delta) => ModifySatisfaction(delta);
         // ─── Inspector ───────────────────────────────────────────
         [Header("Hareket")]
         [SerializeField] private float _moveSpeed      = 3.5f;

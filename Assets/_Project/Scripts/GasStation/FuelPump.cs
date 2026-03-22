@@ -4,6 +4,8 @@ using Unity.Netcode;
 using WeBussedUp.Interfaces;
 using WeBussedUp.Core.Managers;
 using WeBussedUp.UI;
+using WeBussedUp.Gameplay;
+using WeBussedUp.NPC;
 
 namespace WeBussedUp.Stations.GasStation
 {
@@ -76,6 +78,20 @@ namespace WeBussedUp.Stations.GasStation
         public bool     IsOccupied     => _currentCustomerId != ulong.MaxValue;
 
         // ─── NetworkBehaviour ────────────────────────────────────
+
+        private NPCQueueSystem _queue;
+
+private void Start()
+{
+    _queue = GetComponent<NPCQueueSystem>();
+}
+
+// CustomerAI gelince
+public void OnCustomerArrived(CustomerAI customer)
+{
+    if (_queue != null && !_queue.IsFull)
+        _queue.TryEnqueue(customer);
+}
         public override void OnNetworkSpawn()
         {
             PricePerLiter.Value = _pricePerLiter;

@@ -8,6 +8,8 @@ using WeBussedUp.Interfaces;
 using WeBussedUp.Player;
 using WeBussedUp.Gameplay.Items;
 using DG.Tweening;
+using WeBussedUp.Gameplay;
+using WeBussedUp.NPC;
 
 namespace WeBussedUp.Stations.Market
 {
@@ -68,6 +70,20 @@ namespace WeBussedUp.Stations.Market
             NetworkVariableReadPermission.Everyone,
             NetworkVariableWritePermission.Server
         );
+
+        private NPCQueueSystem _queue;
+
+private void Start()
+{
+    _queue = GetComponent<NPCQueueSystem>();
+}
+
+// CustomerAI gelince
+public void OnCustomerArrived(CustomerAI customer)
+{
+    if (_queue != null && !_queue.IsFull)
+        _queue.TryEnqueue(customer);
+}
 
         // ─── Runtime ─────────────────────────────────────────────
         // Slot bazlı liste — index = slot pozisyonu, null = boş slot
