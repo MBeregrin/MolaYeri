@@ -90,14 +90,14 @@ namespace WeBussedUp.NPC
 
             // Pompaya git
             _agent.SetDestination(_targetPump.transform.position);
-            yield return WaitForArrival(_targetPump.transform.position);
+            yield return WaitForArrival(_targetPump.transform.position, _arrivalTimeout);
 
             // Doldur
             yield return StartCoroutine(FillPumpRoutine());
 
             // Çık
             _agent.SetDestination(_despawnPoint);
-            yield return WaitForArrival(_despawnPoint);
+            yield return WaitForArrival(_despawnPoint, _arrivalTimeout);
 
             Despawn();
         }

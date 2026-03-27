@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 3
   tags:
   - CinemachineTarget
+  - Drinkable
   layers:
   - Default
   - TransparentFX
@@ -13,13 +14,13 @@ TagManager:
   - Water
   - UI
   - Interactable
-  - Buildable
-  - Player
-  - BuildableItems
+  - VehicleLayer
+  - PlayerLayer
+  - NPCLayer
   - Ground
-  - 
-  - 
-  - 
+  - Floor
+  - Wall
+  - Obstacle
   - 
   - 
   - 
@@ -51,3 +52,4 @@ TagManager:
   - Light Layer 5
   - Light Layer 6
   - Light Layer 7
+  m_MigratedRenderPipelines: []
