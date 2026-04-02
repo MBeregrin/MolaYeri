@@ -198,7 +198,6 @@ public override void OnNetworkDespawn()
             if (!_input.Player.Interact.WasPressedThisFrame()) return;
 
             // Elimizde eşya varsa → drop PlayerCarrySystem'e bırakılmış, burada işlem yok
-            if (_carrySystem != null && _carrySystem.IsHoldingItem) return;
 
             if (_currentInteractable == null) return;
 

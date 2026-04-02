@@ -18,13 +18,13 @@ MonoBehaviour:
   category: 1
   buyPrice: 50
   sellPrice: 0
-  icon: {fileID: 0}
-  prefab: {fileID: 0}
+  icon: {fileID: 21300000, guid: 0b2316db8e92c6141a6217c194de2993, type: 3}
+  prefab: {fileID: 6993424167744490850, guid: 4435eb72f833b8e4a8ad1bd02b43cd87, type: 3}
   isBuildable: 1
   placementSurface: 0
   gridSize: {x: 1, y: 1}
   pivotOffset: {x: 0, y: 0, z: 0}
-  isShelfable: 0
+  isShelfable: 1
   shelfSpacing: 0.02
   shelfRotationOffset: {x: 0, y: 0, z: 0}
   gapMultiplier: 0.6
