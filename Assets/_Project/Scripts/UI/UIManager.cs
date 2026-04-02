@@ -198,7 +198,7 @@ namespace WeBussedUp.UI
         private void UpdateMoneyUI(float amount)
         {
             if (_moneyText != null)
-                _moneyText.text = $"{amount:N0} TL";
+                _moneyText.text = $"{amount:N0}₺";
         }
 
         private void OnInsufficientFunds(float attempted)

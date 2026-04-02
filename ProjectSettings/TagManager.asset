@@ -6,7 +6,6 @@ TagManager:
   tags:
   - CinemachineTarget
   - Drinkable
-  - StationMarket
   layers:
   - Default
   - TransparentFX
