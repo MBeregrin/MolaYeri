@@ -53,6 +53,10 @@ namespace WeBussedUp.Network
             Instance = this;
             DontDestroyOnLoad(gameObject);
 
+            
+        }
+        private void Start()
+        {
             InitSteam();
         }
 
@@ -72,20 +76,23 @@ namespace WeBussedUp.Network
         }
 
         private void InitSteam()
-        {
-            try
-            {
-                SteamClient.Init(_steamAppId, asyncCallbacks: false);
-                IsSteamReady = true;
-                Debug.Log($"[GameNetworkManager] Steam bağlandı: {SteamClient.Name} (AppID: {_steamAppId})");
-            }
-            catch (System.Exception e)
-            {
-                IsSteamReady = false;
-                Debug.LogError($"[GameNetworkManager] Steam başlatılamadı: {e.Message}\n" +
-                               "Steam açık mı? steam_appid.txt doğru mu?");
-            }
-        }
+{
+    // FacepunchTransport zaten init ediyor
+    // Sadece hazır olup olmadığını kontrol et
+    try
+    {
+        IsSteamReady = SteamClient.IsValid;
+        if (IsSteamReady)
+            Debug.Log($"[GameNetworkManager] Steam bağlandı: {SteamClient.Name}");
+        else
+            Debug.LogWarning("[GameNetworkManager] Steam henüz hazır değil.");
+    }
+    catch (System.Exception e)
+    {
+        IsSteamReady = false;
+        Debug.LogError($"[GameNetworkManager] Steam kontrol hatası: {e.Message}");
+    }
+}
 
         private void OnEnable()
         {
